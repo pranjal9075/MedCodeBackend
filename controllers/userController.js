@@ -1,14 +1,13 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 
-
 //---------------------------------------------------
 // ✅ GET ALL USERS
 //---------------------------------------------------
 exports.getAllUsers = async (req, res) => {
   try {
     const [rows] = await db.execute(
-      "SELECT id, fullName AS name, email, created_at FROM users ORDER BY created_at DESC"
+      "SELECT id, fullName AS name, email, mobile, created_at FROM users ORDER BY created_at DESC"
     );
 
     const formattedUsers = rows.map(user => {
@@ -37,6 +36,7 @@ exports.getAllUsers = async (req, res) => {
     });
   }
 };
+
 
 
 
@@ -158,4 +158,119 @@ exports.getCounts = async (req, res) => {
     });
   }
 };
+
+//---------------------------------------------------
+// ✅ REGISTRATIONS & INQUIRIES TREND (Monthly)
+//---------------------------------------------------
+exports.getTrendData = async (req, res) => {
+  try {
+
+    const [registrations] = await db.query(`
+  SELECT 
+    MONTH(created_at) as monthNumber,
+    DATE_FORMAT(MIN(created_at), '%b') as name,
+    COUNT(*) as registrations
+  FROM users
+  GROUP BY MONTH(created_at)
+  ORDER BY MONTH(created_at)
+`);
+
+const [inquiries] = await db.query(`
+  SELECT 
+    MONTH(created_at) as monthNumber,
+    DATE_FORMAT(MIN(created_at), '%b') as name,
+    COUNT(*) as inquiries
+  FROM inquiries
+  GROUP BY MONTH(created_at)
+  ORDER BY MONTH(created_at)
+`);
+
+
+    const trendData = registrations.map(reg => {
+      const match = inquiries.find(inq => inq.monthNumber === reg.monthNumber);
+
+      return {
+        name: reg.name,
+        registrations: reg.registrations,
+        inquiries: match ? match.inquiries : 0
+      };
+    });
+
+    res.json({
+      success: true,
+      data: trendData
+    });
+
+  } catch (error) {
+    console.error("Trend Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching trend data"
+    });
+  }
+};
+
+//---------------------------------------------------
+// ✅ CHANGE PASSWORD (Logged-in User)
+//---------------------------------------------------
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id; // comes from JWT middleware
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // Get current user
+    const [rows] = await db.execute(
+      "SELECT password FROM users WHERE id = ?",
+      [userId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = rows[0];
+
+    // Compare current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await db.execute(
+      "UPDATE users SET password = ? WHERE id = ?",
+      [hashedPassword, userId]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while changing password",
+    });
+  }
+};
+
 

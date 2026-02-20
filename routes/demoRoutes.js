@@ -2,11 +2,11 @@ const express = require("express");
 const router = express.Router();
 const demoController = require("../controllers/demoController");
 
-// BOOK DEMO
-router.post("/book-demo", demoController.bookDemo);
-
-// VERIFY USER (NEW)
+// VERIFY USER
 router.post("/verify-user", demoController.verifyUser);
+
+// BOOK DEMO (will also check user)
+router.post("/book-demo", demoController.bookDemo);
 
 // GET ALL DEMOS
 router.get("/demo-requests", demoController.getAllDemos);

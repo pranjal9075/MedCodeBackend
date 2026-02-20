@@ -7,6 +7,7 @@ const fs = require("fs");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const statsRoutes = require("./routes/statsRoutes");
 
 const app = express();
 

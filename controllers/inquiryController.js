@@ -1,11 +1,12 @@
 const Inquiry = require("../models/inquiryModel");
+const db = require("../config/db"); // your MySQL connection
 
-
-// CREATE
+// CREATE INQUIRY
 exports.createInquiry = async (req, res) => {
   try {
     const { name, phone, inquiry, message } = req.body;
 
+    // ✅ Validate fields
     if (!name || !phone || !inquiry || !message) {
       return res.status(400).json({
         success: false,
@@ -13,6 +14,20 @@ exports.createInquiry = async (req, res) => {
       });
     }
 
+    // ✅ Check if user is registered
+    const [user] = await db.execute(
+      "SELECT id FROM users WHERE fullName = ? AND mobile = ?",
+      [name, phone]
+    );
+
+    if (!user.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid name or mobile number. You must be registered name or mobile number.",
+      });
+    }
+
+    // ✅ Create inquiry
     await Inquiry.createInquiry(req.body);
 
     res.status(201).json({
@@ -21,8 +36,7 @@ exports.createInquiry = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
-
+    console.error("Create Inquiry Error:", error);
     res.status(500).json({
       success: false,
       message: "Server Error",
@@ -30,15 +44,13 @@ exports.createInquiry = async (req, res) => {
   }
 };
 
-
-
-// GET ALL
+// GET ALL INQUIRIES
 exports.getAllInquiries = async (req, res) => {
   try {
     const data = await Inquiry.getAllInquiries();
     res.json(data);
-
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       message: "Server Error",
@@ -46,19 +58,16 @@ exports.getAllInquiries = async (req, res) => {
   }
 };
 
-
-
-// DELETE
+// DELETE INQUIRY
 exports.deleteInquiry = async (req, res) => {
   try {
     await Inquiry.deleteInquiry(req.params.id);
-
     res.json({
       success: true,
       message: "Deleted successfully",
     });
-
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       message: "Server Error",
@@ -66,16 +75,28 @@ exports.deleteInquiry = async (req, res) => {
   }
 };
 
-// UPDATE
+// UPDATE INQUIRY
 exports.updateInquiry = async (req, res) => {
   try {
-
     const { name, phone, inquiryType, message } = req.body;
 
     if (!name || !phone || !inquiryType || !message) {
       return res.status(400).json({
         success: false,
         message: "All fields required",
+      });
+    }
+
+    // ✅ Optional: validate user exists on update too
+    const [user] = await db.execute(
+      "SELECT id FROM users WHERE fullName = ? AND mobile = ?",
+      [name, phone]
+    );
+
+    if (!user.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid name or mobile number. You must be registered first.",
       });
     }
 
@@ -93,8 +114,7 @@ exports.updateInquiry = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
-
+    console.error("Update Inquiry Error:", error);
     res.status(500).json({
       success: false,
       message: "Server Error",

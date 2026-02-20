@@ -1,17 +1,32 @@
 const db = require("../config/db");
 
-// ✅ BOOK DEMO
+
+// ✅ BOOK DEMO (ONLY AFTER VERIFY)
 exports.bookDemo = async (req, res) => {
   const { email, country_code, phone } = req.body;
 
   try {
-    if (!email || !phone) {
+    if (!email || !phone || !country_code) {
       return res.status(400).json({
         success: false,
         message: "All fields required"
       });
     }
 
+    // ✅ FIXED COLUMN NAMES HERE
+    const [user] = await db.query(
+      "SELECT id FROM users WHERE email = ? AND countryCode = ? AND mobile = ?",
+      [email, country_code, phone]
+    );
+
+    if (user.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Email or Mobile ❌"
+      });
+    }
+
+    // insert into demo_requests (this table can still use country_code & phone)
     await db.query(
       "INSERT INTO demo_requests (email, country_code, phone) VALUES (?, ?, ?)",
       [email, country_code, phone]
@@ -19,14 +34,52 @@ exports.bookDemo = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Demo booked successfully"
+      message: "Demo booked successfully ✅"
     });
+
+  } catch (err) {
+    console.log("BOOK DEMO ERROR:", err);
+    res.status(500).json({ success: false });
+  }
+};
+
+
+// ✅ VERIFY USER (LOGIN CHECK)
+exports.verifyUser = async (req, res) => {
+  const { email, country_code, phone } = req.body;
+
+  try {
+    if (!email || !phone || !country_code) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields required"
+      });
+    }
+
+    const [rows] = await db.query(
+      "SELECT id FROM users WHERE email = ? AND country_code = ? AND phone = ?",
+      [email, country_code, phone]
+    );
+
+    if (rows.length > 0) {
+      return res.json({
+        success: true,
+        message: "Login successful ✅"
+      });
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Email or Mobile ❌"
+      });
+    }
 
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false });
   }
 };
+
+
 
 // ✅ GET ALL DEMOS
 exports.getAllDemos = async (req, res) => {
@@ -41,6 +94,7 @@ exports.getAllDemos = async (req, res) => {
     res.status(500).json({ success: false });
   }
 };
+
 
 // ✅ DELETE DEMO
 exports.deleteDemo = async (req, res) => {
@@ -57,6 +111,7 @@ exports.deleteDemo = async (req, res) => {
   }
 };
 
+
 // ✅ UPDATE DEMO
 exports.updateDemo = async (req, res) => {
   const { email, country_code, phone } = req.body;
@@ -68,40 +123,6 @@ exports.updateDemo = async (req, res) => {
     );
 
     res.json({ success: true, message: "Updated Successfully" });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ success: false });
-  }
-};
-// ✅ VERIFY USER (LOGIN CHECK)
-exports.verifyUser = async (req, res) => {
-  const { email, country_code, phone } = req.body;
-
-  try {
-    if (!email || !phone) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and phone required"
-      });
-    }
-
-    const [rows] = await db.query(
-      "SELECT * FROM demo_requests WHERE email = ? AND country_code = ? AND phone = ?",
-      [email, country_code, phone]
-    );
-
-    if (rows.length > 0) {
-      return res.json({
-        success: true,
-        message: "You can watch the demo now"
-      });
-    } else {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid Email or Phone"
-      });
-    }
-
   } catch (err) {
     console.log(err);
     res.status(500).json({ success: false });
