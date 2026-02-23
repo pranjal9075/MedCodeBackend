@@ -7,7 +7,9 @@ const {
   deleteUser,
   getCounts,
   getTrendData,
-  changePassword
+  changePassword,
+  sendEmailOTP,
+  verifyEmailOTP
 } = require("../controllers/userController");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -15,6 +17,10 @@ const authMiddleware = require("../middleware/authMiddleware");
 // ✅ GET
 router.get("/users", getAllUsers);
 router.get("/stats/trend", getTrendData);
+
+// OTP Routes
+router.post("/send-otp", sendEmailOTP);
+router.post("/verify-otp", verifyEmailOTP);
 
 // ✅ DASHBOARD COUNT
 router.get("/stats/count", getCounts);

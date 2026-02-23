@@ -1,5 +1,8 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const validator = require("validator");
 
 //---------------------------------------------------
 // ✅ GET ALL USERS
@@ -274,3 +277,112 @@ exports.changePassword = async (req, res) => {
 };
 
 
+//---------------------------------------------------
+// ✅ SEND EMAIL OTP
+//---------------------------------------------------
+exports.sendEmailOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // ✅ Email format check
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    // ✅ Generate secure 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+
+    // 5 minutes expiry
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    // Save OTP in DB
+    await db.execute(
+      "INSERT INTO email_otps (email, otp, expires_at) VALUES (?, ?, ?)",
+      [email, otp, expiresAt]
+    );
+
+    // Send email
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Your Verification OTP",
+      text: `MedCode | Account Verification\n\nYour One-Time Password (OTP) is: ${otp}\n\nThis code is valid for 5 minutes.\nFor your security, never share this code with anyone.\n\nIf you did not request this verification, please ignore this message.\n\nTeam MedCode\nhttps://medcode.tech`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+
+  } catch (error) {
+    console.error("Send OTP Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error sending OTP",
+    });
+  }
+};
+
+
+//---------------------------------------------------
+// ✅ VERIFY EMAIL OTP
+//---------------------------------------------------
+exports.verifyEmailOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const [rows] = await db.execute(
+      "SELECT * FROM email_otps WHERE email=? AND otp=? ORDER BY created_at DESC LIMIT 1",
+      [email, otp]
+    );
+
+    if (!rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    const record = rows[0];
+
+    // Check expiry
+    if (new Date() > new Date(record.expires_at)) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
+
+    // Delete OTP after successful verification
+    await db.execute(
+      "DELETE FROM email_otps WHERE email=?",
+      [email]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+    });
+
+  } catch (error) {
+  console.error("===== OTP ERROR START =====");
+  console.error(error);
+  console.error("===== OTP ERROR END =====");
+
+  res.status(500).json({
+    success: false,
+    message: error.message
+  });
+}
+};

@@ -14,7 +14,6 @@ const requestBrochure = async (req, res) => {
       });
     }
 
-    // 🔍 Check if user exists in users table
     const [rows] = await db.query(
       `SELECT * FROM users 
        WHERE email = ? AND mobile = ? AND countryCode = ?`,
@@ -28,7 +27,13 @@ const requestBrochure = async (req, res) => {
       });
     }
 
-    // ✅ If found → allow brochure
+    // ✅ SAVE REQUEST
+    await db.query(
+      `INSERT INTO brochure_requests (email, mobile)
+       VALUES (?, ?)`,
+      [email, mobile]
+    );
+
     res.json({
       success: true,
       pdfUrl: "/brochure.pdf",
@@ -39,7 +44,6 @@ const requestBrochure = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 // =============================
 // 2️⃣ Get All Brochure Requests
 // =============================
