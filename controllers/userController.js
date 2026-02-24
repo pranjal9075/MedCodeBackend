@@ -386,3 +386,38 @@ exports.verifyEmailOTP = async (req, res) => {
   });
 }
 };
+
+//---------------------------------------------------
+// ✅ UPDATE LOGGED-IN USER PROFILE
+//---------------------------------------------------
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; // JWT se aayega
+    const { fullName, countryCode, mobile, photo } = req.body;
+
+    await db.execute(
+      `UPDATE users 
+       SET fullName=?, countryCode=?, mobile=?, photo=? 
+       WHERE id=?`,
+      [fullName, countryCode, mobile, photo, userId]
+    );
+
+    // Updated user fetch karo
+    const [rows] = await db.execute(
+      "SELECT id, fullName, email, countryCode, mobile, photo FROM users WHERE id=?",
+      [userId]
+    );
+
+    res.status(200).json({
+      success: true,
+      user: rows[0],
+    });
+
+  } catch (error) {
+    console.error("Profile Update Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating profile",
+    });
+  }
+};

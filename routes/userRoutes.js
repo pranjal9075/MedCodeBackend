@@ -13,6 +13,7 @@ const {
 } = require("../controllers/userController");
 
 const authMiddleware = require("../middleware/authMiddleware");
+const { updateProfile } = require("../controllers/userController");
 
 // ✅ GET
 router.get("/users", getAllUsers);
@@ -27,6 +28,7 @@ router.get("/stats/count", getCounts);
 
 // ✅ UPDATE
 router.put("/users/:id", updateUser);
+router.put("/profile", authMiddleware, updateProfile);
 
 
 // ✅ DELETE
